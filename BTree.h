@@ -5,6 +5,11 @@
 static int factor_t;
 
 struct Node {
+    int * keys;
+    int size;
+    Node **children;
+    bool leaf;
+
     Node() {
         keys = new int[2*factor_t - 1];
         children = new Node*[2*factor_t];
@@ -14,6 +19,20 @@ struct Node {
         size = 0;
         leaf = true;
     }
+
+    void del(int key) {
+        int i = 0;
+        for (; i < size && key > keys[i]; ++i) {}
+        if(key != keys[i]) {
+            children[i]->del(key);
+        }
+        if(leaf && key == keys[i]) {
+            array_remove_at(keys, i, size);
+            array_remove_at(children, i, size+1);
+            size--;
+        }
+    }
+
     void insert(int key) {
         int i = 0;
         for (; i < size && key > keys[i]; ++i) {}
@@ -31,7 +50,6 @@ struct Node {
         }
 
     }
-
 
     void Split(int index) {
         int i = index;
@@ -58,8 +76,8 @@ struct Node {
         children[i]->size = median_index;
 
         int k = 0;
-        for (int j = median_index; j < tmp_size; ++j) {
-            children[i + 1]->children[k] = children[i + 1]->children[j];
+        for (int j = median_index + 1; j < tmp_size; ++j) {
+            children[i + 1]->children[k] = children[i]->children[j];
             k++;
         }
     }
@@ -82,10 +100,6 @@ struct Node {
 
     }
 
-    int * keys;
-    int size;
-    Node **children;
-    bool leaf;
 };
 
 struct BTree {
@@ -96,10 +110,16 @@ struct BTree {
         root = NULL;
         height = 0;
     }
+
     void print() {
         cout << "root:" << endl;
         root->print();
     }
+
+    void del(int key) {
+        root->del(key);
+    }
+
     void insert(int key) {
         //Если корневого узла не было, создаем
         if (root == NULL) {
@@ -135,29 +155,7 @@ struct BTree {
             }
             else {
                 if(root->children[i]->size == 2* factor_t - 1) {
-                    int median_index = root->children[i]->size / 2;
-                    array_insert_at(root->keys, i, root->size, root->children[i]->keys[median_index]);
-                    root->size++;
-                    //Теперь i - индекс нового элемента;
-                    for (int m = root->size; m > i + 2; --m) {
-                        root->children[m] = root->children[m - 1];
-                    }
-                    int tmp_size = root->children[i]->size + 1;
-                    root->children[i+1]-> keys = array_slice(root->children[i]->keys
-                            , median_index+1,
-                            root->children[i]->size,
-                            root->children[i]->size);
-                    root->children[i+1]->size = root->children[i]->size - median_index - 1;
-
-                    root->children[i]->keys = array_slice(root->children[i]->keys,
-                            0, median_index,
-                            root->children[i]->size);
-                    root->children[i]->size = median_index;
-                    int k = 0;
-                    for (int j = median_index + 1; j < tmp_size; ++j) {
-                        root->children[i+1]->children[k] = root->children[i]->children[j];
-                        k++;
-                    }
+                    root->Split(i);
                     insert(key);
                     return;;
                 }

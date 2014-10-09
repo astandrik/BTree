@@ -51,14 +51,14 @@ T* array_slice(T* array, int from_index, int to_index, int array_size) {
     if(from_index < to_index) {
         for (int i = from_index; i < to_index ; ++i) {
            new_array[j] = array[i];
-	   j++;
+            j++;
         }
     }
     else {
         for (int i = to_index; i < from_index ; ++i) {
             new_array[j] = array[i];
-	    j++;        
-	}
+            j++;
+        }
     }
     return new_array;
 };
