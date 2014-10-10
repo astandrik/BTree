@@ -23,13 +23,38 @@ struct Node {
     void del(int key) {
         int i = 0;
         for (; i < size && key > keys[i]; ++i) {}
+        Node *current_child = children[i];
+        Node *right_child = children[i+1];
+        Node *left_child = children[i-1];
+        int left_ch_size = !leaf && i > 0 ? children[i-1]->size : -1;
+        int right_ch_size = !leaf &&  i < size + 1 ? children[i+1]->size : -1;
+        int curr_ch_size = !leaf ? current_child->size : 0 ;
+        if (!leaf && key == keys[i]) {
+            if(curr_ch_size>= factor_t) {
+                array_insert_at(keys, i, size, current_child->keys[current_child->size - 1]);
+                current_child->del(current_child->keys[current_child->size - 1]);
+            } else if (right_ch_size >= factor_t) {
+                array_insert_at(keys, i, size, right_child->keys[0]);
+                right_child->del(right_child->keys[0]);
+            } else if (curr_ch_size == right_ch_size && right_ch_size == factor_t - 1) {
+                array_insert_at(current_child->keys, current_child->size, current_child->size, keys[i]);
+                current_child->size++;
+                int j = 0;
+                for (; j < right_child->size; ++j) {
+                    array_insert_at(current_child->keys, current_child->size, current_child->size, right_child->keys[j]);
+                    array_insert_at(current_child->children, current_child->size, current_child->size + 1, right_child->children[j]);
+                    current_child->size++;
+                }
+                array_insert_at(current_child->children, current_child->size, current_child->size, right_child->children[j]);
+                array_remove_at(keys, i, size);
+                array_remove_at(children, i+1, size + 1);
+                size--;
+                del(key);
+                return;
+            }
+        }
         if(!leaf && key != keys[i]) {
             if(children[i]->size == factor_t - 1) {
-                int left_ch_size = i > 0 ? children[i-1]->size : -1;
-                int right_ch_size = i < size + 1 ? children[i+1]->size : -1;
-                Node *current_child = children[i];
-                Node *right_child = children[i+1];
-                Node *left_child = children[i-1];
                 if (left_ch_size > factor_t - 1) {
                     Node *child_to_insert = children[i-1]->children[children[i-1]->size - 1];
                     //Вставка в текущего ребенка
