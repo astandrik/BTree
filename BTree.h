@@ -23,14 +23,83 @@ struct Node {
     void del(int key) {
         int i = 0;
         for (; i < size && key > keys[i]; ++i) {}
-        if(key != keys[i]) {
-            children[i]->del(key);
+        if(!leaf && key != keys[i]) {
+            if(children[i]->size == factor_t - 1) {
+                int left_ch_size = i > 0 ? children[i-1]->size : -1;
+                int right_ch_size = i < size + 1 ? children[i+1]->size : -1;
+                Node *current_child = children[i];
+                Node *right_child = children[i+1];
+                Node *left_child = children[i-1];
+                if (left_ch_size > factor_t - 1) {
+                    Node *child_to_insert = children[i-1]->children[children[i-1]->size - 1];
+                    //Вставка в текущего ребенка
+                    array_insert_at(current_child->keys, 0, 2*factor_t - 1, keys[i-1]);
+                    array_insert_at(current_child->children, 0, 2*factor_t, child_to_insert);
+                    current_child->size++;
+                    //Удаление\вставка из узла
+                    array_remove_at(keys, i-1, size);
+                    array_insert_at(keys, i-1, size, left_child->keys[left_child->size-1]);
+                    //Удаление из левого ребенка
+                    array_remove_at(left_child->keys, left_child->size - 1, left_child->size);
+                    array_remove_at(left_child->children, left_child->size, left_child->size);
+                    left_child->size--;
+                    del(key);
+                    return;
+                } else if (right_ch_size > factor_t - 1) {
+                    Node *child_to_insert = children[i+1]->children[0];
+                    //Вставка в текущего ребенка
+                    array_insert_at(current_child->keys, current_child->size, 2*factor_t - 1, keys[i]);
+                    array_insert_at(current_child->children, current_child->size + 1, 2*factor_t, child_to_insert);
+                    current_child->size++;
+                    //Удаление\вставка из узла
+                    array_remove_at(keys, i, size);
+                    array_insert_at(keys, i, size, right_child->keys[0]);
+                    //Удаление из правого ребенка
+                    array_remove_at(right_child->keys, 0, right_child->size);
+                    array_remove_at(right_child->children, 0, right_child->size);
+                    right_child->size--;
+                    del(key);
+                    return;
+                } else if (left_ch_size == current_child->size && current_child->size == (factor_t - 1)) {
+                    Node *child_to_insert;
+                    array_insert_at(current_child->keys, 0, 2*factor_t - 1, keys[i-1]);
+                    current_child->size++;
+                    array_remove_at(keys, i-1, size);
+                    array_remove_at(children, i-1, size+1);
+                    size--;
+                    for (int j = 0; j < left_child->size ; ++j) {
+                        child_to_insert = left_child->children[j];
+                        array_insert_at(current_child->keys, j, 2*factor_t - 1, left_child->keys[j]);
+                        array_insert_at(current_child->children, j, 2*factor_t, child_to_insert);
+                        current_child->size++;
+                    }
+                    array_insert_at(current_child->children, left_child->size, 2*factor_t, child_to_insert);
+                    i--;
+                } else if (right_ch_size == current_child->size && current_child->size == (factor_t - 1)) {
+                    Node *child_to_insert;
+                    array_insert_at(current_child->keys, current_child->size, 2*factor_t - 1, keys[i]);
+                    current_child->size++;
+                    array_remove_at(keys, i, size);
+                    array_remove_at(children, i+1, size+1);
+                    size--;
+                    int index = current_child->size;
+                    for (int j = 0; j < right_child->size ; ++j) {
+                        child_to_insert = right_child->children[j];
+                        array_insert_at(current_child->keys, index + j, 2*factor_t - 1, right_child->keys[j]);
+                        array_insert_at(current_child->children, index + j, 2*factor_t, child_to_insert);
+                        current_child->size++;
+                    }
+                    array_insert_at(current_child->children, index+ right_child->size, 2*factor_t, child_to_insert);
+                }
+            }
         }
         if(leaf && key == keys[i]) {
             array_remove_at(keys, i, size);
             array_remove_at(children, i, size+1);
             size--;
+            return;
         }
+        children[i]->del(key);
     }
 
     void insert(int key) {
@@ -64,17 +133,18 @@ struct Node {
         if(children[i+1] == NULL) {
             children[i+1] = new Node();
         }
+        int* to_delete = children[i]->keys;
         children[i+1]-> keys = array_slice(children[i]->keys
                 , median_index+1,
                 children[i]->size,
-                children[i]->size);
+                2*factor_t - 1);
         children[i+1]-> size = children[i]->size - median_index - 1;
 
         children[i]->keys = array_slice(children[i]->keys,
                 0, median_index,
-                children[i]->size);
+                2*factor_t - 1);
         children[i]->size = median_index;
-
+        delete [] to_delete;
         int k = 0;
         for (int j = median_index + 1; j < tmp_size; ++j) {
             children[i + 1]->children[k] = children[i]->children[j];
