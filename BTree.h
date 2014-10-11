@@ -10,6 +10,20 @@ struct Node {
     Node **children;
     bool leaf;
 
+    int get_biggest() {
+        while(!leaf) {
+            return children[size]->get_biggest();
+        }
+        return keys[size-1];
+    }
+
+    int get_smallest() {
+        while(!leaf) {
+           return children[0]->get_smallest();
+        }
+        return keys[0];
+    }
+
     Node() {
         keys = new int[2*factor_t - 1];
         children = new Node*[2*factor_t];
@@ -26,16 +40,22 @@ struct Node {
         Node *current_child = children[i];
         Node *right_child = children[i+1];
         Node *left_child = children[i-1];
-        int left_ch_size = !leaf && i > 0 ? children[i-1]->size : -1;
-        int right_ch_size = !leaf &&  i < size + 1 ? children[i+1]->size : -1;
+        int left_ch_size = (!leaf && i > 0) ? children[i-1]->size : -1;
+        int right_ch_size = !leaf &&  (i < size) ? children[i+1]->size : -1;
         int curr_ch_size = !leaf ? current_child->size : 0 ;
         if (!leaf && key == keys[i]) {
             if(curr_ch_size>= factor_t) {
-                array_insert_at(keys, i, size, current_child->keys[current_child->size - 1]);
-                current_child->del(current_child->keys[current_child->size - 1]);
+                int biggest_key = current_child->get_biggest();
+                array_remove_at(keys, i, size);
+                array_insert_at(keys, i, size, biggest_key);
+                current_child->del(biggest_key);
+                return;
             } else if (right_ch_size >= factor_t) {
-                array_insert_at(keys, i, size, right_child->keys[0]);
-                right_child->del(right_child->keys[0]);
+                int smallest_key = right_child->get_smallest();
+                array_remove_at(keys, i, size);
+                array_insert_at(keys, i, size, smallest_key);
+                right_child->del(smallest_key);
+                return;
             } else if (curr_ch_size == right_ch_size && right_ch_size == factor_t - 1) {
                 array_insert_at(current_child->keys, current_child->size, current_child->size, keys[i]);
                 current_child->size++;
@@ -213,6 +233,9 @@ struct BTree {
 
     void del(int key) {
         root->del(key);
+        if(root->size == 0) {
+            root = root->children[0];
+        }
     }
 
     void insert(int key) {
