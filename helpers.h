@@ -37,6 +37,7 @@
     };
 
 
+
     template<class T>
     void array_remove_at(T* array, int index, int array_size) {
         for (int i = index; i < array_size; ++i) {

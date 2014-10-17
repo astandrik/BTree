@@ -1,21 +1,21 @@
 #include <iostream>
 #include "BTree.h"
+#include <string>
 using namespace std;
 
-
 int main() {
-    BTree tree(3);
-    for (int i = 1; i <=28; ++i) {
-        tree.insert(i);
+    DBC config;
+    config.chunk_size = 300;
+    config.db_size = 90000;
+    config.t_factor = 3;
+
+
+    string path = "/home/anton/MyDataBase.dat";
+    DB* database = dbcreate(const_cast<char*>(path.c_str()), config);
+
+    for(int i = 0; i < 100; i++) {
+        database->dbworker->insert(i);
     }
-    tree.del(9);
-    tree.del(18);
-    tree.del(17);
-    tree.del(16);
-    tree.del(15);
-    tree.del(14);
-    tree.del(13);
-    tree.del(12);
-    tree.print();
+    database->dbworker->print();
     return 0;
 }

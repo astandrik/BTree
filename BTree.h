@@ -1,150 +1,28 @@
 #include <iostream>
-#include "helpers.h"
+#include "helpers"
+#include "DataBase.h"
 
 
 static int factor_t;
 
-struct Node {
-    int * keys;
+struct NodeFileWrapper {
+    long offset;
     int size;
-    Node **children;
+    int* keys;
+    long* children;
     bool leaf;
-
-    int get_biggest() {
-        while(!leaf) {
-            return children[size]->get_biggest();
-        }
-        return keys[size-1];
+    NodeFileWrapper();
+    NodeFileWrapper* operator[](int index) {
+        return FileWorker::read_chunk(children[index]);
+    }
+    void insert_key(int index, int key) {
+        array_insert_at(keys, index, size + 1, key);
+        size++;
+        FileWorker::write_chunk(this);
     }
 
-    int get_smallest() {
-        while(!leaf) {
-           return children[0]->get_smallest();
-        }
-        return keys[0];
-    }
-
-    Node() {
-        keys = new int[2*factor_t - 1];
-        children = new Node*[2*factor_t];
-        for (int i = 0; i < 2*factor_t; ++i) {
-            children[i] = NULL;
-        }
-        size = 0;
-        leaf = true;
-    }
-
-    void del(int key) {
-        int i = 0;
-        for (; i < size && key > keys[i]; ++i) {}
-        Node *current_child = children[i];
-        Node *right_child = children[i+1];
-        Node *left_child = children[i-1];
-        int left_ch_size = (!leaf && i > 0) ? children[i-1]->size : -1;
-        int right_ch_size = !leaf &&  (i < size) ? children[i+1]->size : -1;
-        int curr_ch_size = !leaf ? current_child->size : 0 ;
-        if (!leaf && key == keys[i]) {
-            if(curr_ch_size>= factor_t) {
-                int biggest_key = current_child->get_biggest();
-                array_remove_at(keys, i, size);
-                array_insert_at(keys, i, size, biggest_key);
-                current_child->del(biggest_key);
-                return;
-            } else if (right_ch_size >= factor_t) {
-                int smallest_key = right_child->get_smallest();
-                array_remove_at(keys, i, size);
-                array_insert_at(keys, i, size, smallest_key);
-                right_child->del(smallest_key);
-                return;
-            } else if (curr_ch_size == right_ch_size && right_ch_size == factor_t - 1) {
-                array_insert_at(current_child->keys, current_child->size, current_child->size, keys[i]);
-                current_child->size++;
-                int j = 0;
-                for (; j < right_child->size; ++j) {
-                    array_insert_at(current_child->keys, current_child->size, current_child->size, right_child->keys[j]);
-                    array_insert_at(current_child->children, current_child->size, current_child->size + 1, right_child->children[j]);
-                    current_child->size++;
-                }
-                array_insert_at(current_child->children, current_child->size, current_child->size, right_child->children[j]);
-                array_remove_at(keys, i, size);
-                array_remove_at(children, i+1, size + 1);
-                size--;
-                del(key);
-                return;
-            }
-        }
-        if(!leaf && key != keys[i]) {
-            if(children[i]->size == factor_t - 1) {
-                if (left_ch_size > factor_t - 1) {
-                    Node *child_to_insert = children[i-1]->children[children[i-1]->size - 1];
-                    //Вставка в текущего ребенка
-                    array_insert_at(current_child->keys, 0, 2*factor_t - 1, keys[i-1]);
-                    array_insert_at(current_child->children, 0, 2*factor_t, child_to_insert);
-                    current_child->size++;
-                    //Удаление\вставка из узла
-                    array_remove_at(keys, i-1, size);
-                    array_insert_at(keys, i-1, size, left_child->keys[left_child->size-1]);
-                    //Удаление из левого ребенка
-                    array_remove_at(left_child->keys, left_child->size - 1, left_child->size);
-                    array_remove_at(left_child->children, left_child->size, left_child->size);
-                    left_child->size--;
-                    del(key);
-                    return;
-                } else if (right_ch_size > factor_t - 1) {
-                    Node *child_to_insert = children[i+1]->children[0];
-                    //Вставка в текущего ребенка
-                    array_insert_at(current_child->keys, current_child->size, 2*factor_t - 1, keys[i]);
-                    array_insert_at(current_child->children, current_child->size + 1, 2*factor_t, child_to_insert);
-                    current_child->size++;
-                    //Удаление\вставка из узла
-                    array_remove_at(keys, i, size);
-                    array_insert_at(keys, i, size, right_child->keys[0]);
-                    //Удаление из правого ребенка
-                    array_remove_at(right_child->keys, 0, right_child->size);
-                    array_remove_at(right_child->children, 0, right_child->size);
-                    right_child->size--;
-                    del(key);
-                    return;
-                } else if (left_ch_size == current_child->size && current_child->size == (factor_t - 1)) {
-                    Node *child_to_insert;
-                    array_insert_at(current_child->keys, 0, 2*factor_t - 1, keys[i-1]);
-                    current_child->size++;
-                    array_remove_at(keys, i-1, size);
-                    array_remove_at(children, i-1, size+1);
-                    size--;
-                    for (int j = 0; j < left_child->size ; ++j) {
-                        child_to_insert = left_child->children[j];
-                        array_insert_at(current_child->keys, j, 2*factor_t - 1, left_child->keys[j]);
-                        array_insert_at(current_child->children, j, 2*factor_t, child_to_insert);
-                        current_child->size++;
-                    }
-                    array_insert_at(current_child->children, left_child->size, 2*factor_t, child_to_insert);
-                    i--;
-                } else if (right_ch_size == current_child->size && current_child->size == (factor_t - 1)) {
-                    Node *child_to_insert;
-                    array_insert_at(current_child->keys, current_child->size, 2*factor_t - 1, keys[i]);
-                    current_child->size++;
-                    array_remove_at(keys, i, size);
-                    array_remove_at(children, i+1, size+1);
-                    size--;
-                    int index = current_child->size;
-                    for (int j = 0; j < right_child->size ; ++j) {
-                        child_to_insert = right_child->children[j];
-                        array_insert_at(current_child->keys, index + j, 2*factor_t - 1, right_child->keys[j]);
-                        array_insert_at(current_child->children, index + j, 2*factor_t, child_to_insert);
-                        current_child->size++;
-                    }
-                    array_insert_at(current_child->children, index+ right_child->size, 2*factor_t, child_to_insert);
-                }
-            }
-        }
-        if(leaf && key == keys[i]) {
-            array_remove_at(keys, i, size);
-            array_remove_at(children, i, size+1);
-            size--;
-            return;
-        }
-        children[i]->del(key);
+    NodeFileWrapper* get_child(int index) {
+        return FileWorker::read_chunk(children[index]);
     }
 
     void insert(int key) {
@@ -152,51 +30,17 @@ struct Node {
         for (; i < size && key > keys[i]; ++i) {}
 
         if (leaf) {
-            array_insert_at(keys, i, size + 1, key);
-            size++;
+            insert_key(i, key);
         } else {
-            if(children[i]->size == 2* factor_t - 1) {
-                Split(i);
-                insert(key);
+            if(get_child(i)->size == 2* factor_t - 1) {
+                //Split(i);
+               // insert(key);
                 return;
             }
-            children[i]->insert(key);
+            //children[i]->insert(key);
         }
 
     }
-
-    void Split(int index) {
-        int i = index;
-        int median_index = children[i]->size / 2;
-        array_insert_at(keys, i, size, children[i]->keys[median_index]);
-        size++;
-        //Теперь i - индекс нового элемента;
-        int tmp_size = children[i]->size + 1;
-        for (int m = size; m > i + 2; --m) {
-            children[m] = children[m - 1];
-        }
-        if(children[i+1] == NULL) {
-            children[i+1] = new Node();
-        }
-        int* to_delete = children[i]->keys;
-        children[i+1]-> keys = array_slice(children[i]->keys
-                , median_index+1,
-                children[i]->size,
-                2*factor_t - 1);
-        children[i+1]-> size = children[i]->size - median_index - 1;
-
-        children[i]->keys = array_slice(children[i]->keys,
-                0, median_index,
-                2*factor_t - 1);
-        children[i]->size = median_index;
-        delete [] to_delete;
-        int k = 0;
-        for (int j = median_index + 1; j < tmp_size; ++j) {
-            children[i + 1]->children[k] = children[i]->children[j];
-            k++;
-        }
-    }
-
 
     void print() {
         for (int j = 0; j < size; ++j) {
@@ -206,24 +50,133 @@ struct Node {
         if(!leaf) {
             cout << "Children begin: " << endl;
             for (int i = 0; i < size+1; ++i) {
-                if(children[i] != NULL) {
-                    children[i]->print();
+                NodeFileWrapper* child = get_child(i);
+                if(child->offset != 0) {
+                    get_child(i)->print();
                 }
             }
             cout << "Children end." << endl;
         }
+    }
 
+
+    void Split(int index) {
+        int i = index;
+        int median_index = get_child(i)->size / 2;
+        insert_key(i, get_child(i)->keys[median_index]);
+        //Теперь i - индекс нового элемента;
+        int tmp_size = get_child(i)->size + 1;
+        for (int m = size; m > i + 2; --m) {
+            children[m] = children[m - 1];
+        }
+
+        NodeFileWrapper* right = new NodeFileWrapper();
+        NodeFileWrapper* left = get_child(i);
+        children[i+1] = right->offset;
+        right-> keys = array_slice(left->keys
+                , median_index+1,
+                left->size,
+                2*factor_t - 1);
+        right-> size = left->size - median_index - 1;
+
+        left->keys = array_slice(left->keys,
+                0, median_index,
+                2*factor_t - 1);
+        left->size = median_index;
+        int k = 0;
+        for (int j = median_index + 1; j < tmp_size; ++j) {
+            right->children[k] = left->children[j];
+            k++;
+        }
+        FileWorker::write_chunk(left);
+        FileWorker::write_chunk(right);
+        FileWorker::write_chunk(this);
     }
 
 };
 
+
+
+
+
+
+void FileWorker::write_chunk(NodeFileWrapper* node) {
+    fseek(db->db_file, node->offset, SEEK_SET);
+    fwrite(&node->offset, sizeof(long), 1, db->db_file);
+    fwrite(&node->size, sizeof(int), 1, db->db_file);
+    fwrite(node->keys, sizeof(int), node->size, db->db_file);
+    fwrite(node->children, sizeof(long), node->size + 1, db->db_file);
+    fwrite(&node->leaf, sizeof(bool), 1, db->db_file);
+    fflush(db->db_file);
+}
+
+NodeFileWrapper  *FileWorker::read_chunk(long _offset) {
+    fseek(db->db_file, _offset, SEEK_SET);
+    int size;
+    int* keys;
+    long* children;
+    bool isleaf;
+    long offset;
+
+    fread(&offset, sizeof(long), 1, db->db_file);
+    fread(&size, sizeof(int), 1, db->db_file);
+    keys = new int[size];
+    children = new long[size + 1];
+    fread(keys, sizeof(int), size, db->db_file);
+    fread(children, sizeof(long) , size + 1, db->db_file);
+    fread(&isleaf, sizeof(bool), 1, db->db_file);
+
+    NodeFileWrapper *node = new NodeFileWrapper();
+    node->offset = offset;
+    node->size = size;
+    node->children = children;
+    node->keys = keys;
+    node->leaf = isleaf;
+    return node;
+}
+
+long  FileWorker::get_free_chunk_pos() {
+    fseek(db->db_file, db->begin, SEEK_SET);
+    long init_pos = ftell(db->db_file);
+    long tmp;
+    int size;
+    while(init_pos < db->end) {
+        init_pos = ftell(db->db_file);
+        fread(&tmp, sizeof(long), 1, db->db_file);
+        fread(&size, sizeof(int), 1, db->db_file);
+        if(size == 0) return init_pos;
+        else {
+            fseek(db->db_file, -sizeof(int), SEEK_CUR);
+            fseek(db->db_file, -sizeof(long), SEEK_CUR);
+            fseek(db->db_file, db->md->chunk_size, SEEK_CUR);
+        }
+    }
+    return -1;
+}
+
+
+
+
+NodeFileWrapper::NodeFileWrapper() {
+    DataBase* db = FileWorker::db;
+    children = new long [2*db->md->t];
+    keys = new int[2*db->md->t - 1];
+    size = 0;
+    leaf = true;
+    this->offset = FileWorker::get_free_chunk_pos();
+}
+
+
 struct BTree {
-    Node* root;
+    NodeFileWrapper* root;
+    DataBase* db;
     int height;
     BTree(int t) {
+        node = new NodeFileWrapper();
         factor_t = t;
         root = NULL;
         height = 0;
+        this->db = FileWorker::db;
     }
 
     void print() {
@@ -231,34 +184,38 @@ struct BTree {
         root->print();
     }
 
-    void del(int key) {
+/*    void del(int key) {
         root->del(key);
         if(root->size == 0) {
             root = root->children[0];
+            height--;
         }
-    }
+    }*/
 
     void insert(int key) {
         //Если корневого узла не было, создаем
         if (root == NULL) {
-            Node * new_node = new Node();
+            NodeFileWrapper * new_node = new NodeFileWrapper();
             root = new_node;
+            root->offset = db->begin;
+            FileWorker::write_chunk(root);
             insert(key);
             return;
         }
         //Если корень переполнен, увеличиваем высоту дерева
         if (root->size == 2*factor_t - 1) {
-            Node *new_node = new Node();
+            NodeFileWrapper *new_node = new NodeFileWrapper();
             height++;
             new_node->leaf = false;
+            new_node->children[0] = root->offset;
             new_node->size = 0;
-            new_node->children[0] = root;
-            new_node->children[0]->size = root->size;
+            FileWorker::write_chunk(new_node);
+            delete root;
             root = new_node;
-            for (int i = 1 ; i < 2*factor_t; ++i) {
+            /*for (int i = 1 ; i < 2*factor_t; ++i) {
                 root->children[i] = new Node();
                 root->children[i]->leaf =  new_node->children[0]->leaf;
-            }
+            }*/
             insert(key);
             return;
         }
@@ -267,19 +224,48 @@ struct BTree {
             for (; i < root->size && key > root->keys[i]; ++i) {}
 
             if (root->leaf) {
-                array_insert_at(root->keys, i, root->size + 1, key);
-                root->size++;
-
+                root->insert_key(i, key);
             }
             else {
-                if(root->children[i]->size == 2* factor_t - 1) {
+                if(root->get_child(i)->size == 2* factor_t - 1) {
                     root->Split(i);
                     insert(key);
                     return;;
                 }
-                root->children[i]->insert(key);
+                root->get_child(i)->insert(key);
             }
         }
     }
 
 };
+
+void DataBase::print() {
+    tree->print();
+}
+void DataBase::insert(int key) {
+    tree->insert(key);
+}
+
+void DataBase::create(char* filename, struct DBC config) {
+    FileWorker::db = this;
+    md = new MetaData();
+    md->chunk_size = config.chunk_size;
+    md->t = config.t_factor;
+    md->db_size = config.db_size;
+
+    db_file = fopen(filename, "wb+");
+    fwrite(md, sizeof(MetaData), 1, db_file);
+    //fseek(db_file, 0, SEEK_SET);
+    int free_chunks = md->db_size/md->chunk_size;
+    begin = ftell(db_file);
+    NodeFileWrapper* empty = new NodeFileWrapper();
+    bool destroyer = 0;
+    for (int i = 0; i < md->db_size; ++i) {
+        fwrite(&destroyer, sizeof(bool), 1, db_file);
+    }
+    end = ftell(db_file);
+    tree = new BTree(md->t);
+    fflush(db_file);
+}
+
+
