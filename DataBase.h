@@ -1,4 +1,5 @@
 #include "mydb.h"
+#include <stdio.h>
 
 using namespace std;
 
@@ -20,6 +21,8 @@ struct DataBase {
     struct MetaData {
         int t;
         int chunk_size;
+        int key_size;
+        int value_size;
         long db_size;
         long root_offset;
     };
@@ -32,15 +35,14 @@ public:
     long end;
 
     void create(char* filename, struct DBC config);
-    void insert(int key);
+    int insert(char* key, char* value);
+    int get(char* key, char **value);
     void print();
     void print_file() {
         bool byte;
 
         fseek(db_file, 0, SEEK_SET);
-        while(fread(&byte, sizeof(bool), 1, db_file)) {
-            cout << byte << " ";
-        }
+
     }
 };
 
@@ -64,7 +66,7 @@ int db_put(struct DB *, void *, size_t, void * , size_t );
 
 
 int db_close(struct DB *db) {
-    db->close(db);
+    return 0;
 }
 int db_del(struct DB *db, void *key, size_t key_len) {
     struct DBT keyt = {
@@ -75,26 +77,14 @@ int db_del(struct DB *db, void *key, size_t key_len) {
 }
 int db_get(struct DB *db, void *key, size_t key_len,
         void **val, size_t *val_len) {
-    struct DBT keyt = {
-            .data = key,
-            .size = key_len
-    };
-    struct DBT valt = {0, 0};
-    int rc = db->get(db, &keyt, &valt);
-    *val = valt.data;
-    *val_len = valt.size;
-    return rc;
+    char** v = (char**) val;
+    char* k = (char*) key;
+    return db->dbworker->get(k, v);
 }
 int db_put(struct DB *db, void *key, size_t key_len,
         void *val, size_t val_len) {
-    struct DBT keyt = {
-            .data = key,
-            .size = key_len
-    };
-    struct DBT valt = {
-            .data = val,
-            .size = val_len
-    };
-    return db->put(db, &keyt, &valt);
+    char* k = (char*) key;
+    char * v = (char*) val;
+    return db->dbworker->insert(k, v);
 }
 

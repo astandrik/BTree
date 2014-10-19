@@ -1,0 +1,2 @@
+all:
+g++ main.cpp BTree.h helpers.h -o treetest

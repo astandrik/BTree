@@ -36,6 +36,16 @@
         array[index] = value_to_insert;
     };
 
+    void array_insert_at_bytes(char* chunk, long offset, long chunk_size, char* bytes_to_insert, int num_of_bytes) {
+        for (int i = chunk_size; i > offset; ++i) {
+            chunk[i] = chunk[i-1];
+        }
+        int k = 0;
+        for (int j = offset; j < num_of_bytes ; ++j) {
+            chunk[j] = bytes_to_insert[k++];
+        }
+    };
+
 
 
     template<class T>
