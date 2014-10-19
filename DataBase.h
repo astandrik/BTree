@@ -49,42 +49,37 @@ public:
 
 
 
+
 struct DB *dbcreate(char *file, struct DBC conf) {
-    struct DB* database =  (struct DB*)malloc(sizeof(struct DB));
-    database->dbworker = (struct DataBase*)malloc(sizeof(struct DataBase));
+    cout << "In dbcreate" << endl;
+    cout << "path: " << file << endl;
+    struct DB *database = (struct DB *) malloc(sizeof(struct DB));
+    cout << "Malloced DB" << endl;
+    database->dbworker = (struct DataBase *) malloc(sizeof(struct DataBase));
+    cout << "Malloced DBworker" << endl;
     database->dbworker->create(file, conf);
+    cout<< "Created file, conf DBWorker" << endl;
     return database;
-};
-
-
-struct DB *dbopen (char *file, struct DBC conf);
-int db_close(struct DB *db);
-int db_del(struct DB *, void *, size_t);
-int db_get(struct DB *, void *, size_t, void **, size_t *);
-int db_put(struct DB *, void *, size_t, void * , size_t );
-
-
+} ;
 
 int db_close(struct DB *db) {
     return 0;
 }
 int db_del(struct DB *db, void *key, size_t key_len) {
-    struct DBT keyt = {
-            .data = key,
-            .size = key_len
-    };
-    return db->del(db, &keyt);
+    return 0;
 }
 int db_get(struct DB *db, void *key, size_t key_len,
         void **val, size_t *val_len) {
-    char** v = (char**) val;
-    char* k = (char*) key;
+    char **v = (char **) val;
+    char *k = (char *) key;
+    *val_len = 20;
     return db->dbworker->get(k, v);
 }
 int db_put(struct DB *db, void *key, size_t key_len,
         void *val, size_t val_len) {
-    char* k = (char*) key;
-    char * v = (char*) val;
-    return db->dbworker->insert(k, v);
+    char *k = (char *) key;
+    char *v = (char *) val;
+    db->dbworker->insert(k, v);
+    //db->dbworker->print();
+    return  1;
 }
-

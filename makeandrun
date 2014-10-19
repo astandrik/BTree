@@ -1,0 +1,4 @@
+g++ -c -fPIC main.cpp -o main.o
+g++ -shared -Wl,-soname,libdb.so -o libdb.so main.o
+python  ../../testingSystem/fall14BDB/test/runner.py --new --workload ../../testingSystem/fall14BDB/example/smallworkload.in --so libdb.so 
+
