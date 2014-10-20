@@ -6,6 +6,7 @@
 using namespace std;
 
 /*
+
 vector<char*> test_data;
 vector<char*> inserted;
 static const char alphanum[] =
@@ -18,8 +19,8 @@ int stringLength = 20;
 
 char* genRandom()
 {
-    char* new_str = new char[20];
-    for (int i = 0; i < 20; ++i) {
+    char* new_str = new char[stringLength];
+    for (int i = 0; i < stringLength; ++i) {
         new_str[i] = alphanum[rand() % stringLength];
     }
     return new_str;
@@ -43,41 +44,27 @@ int main() {
     string path = "/home/anton/MyDataBase.dat";
     DB* database = dbcreate(const_cast<char*>(path.c_str()), config);
     //database->dbworker->print_file();
-
-    char* key1 = "helloDolly1";
-    char* key2 = "helloDolly2";
-    char* key3 = "helloDolly3";
-    char* key4 = "helloDolly4";
-    char* key5 = "helloDolly5";
-    char* key6 = "helloDolly6";
-    char* key7 = "helloDolly7";
-    char* key8 = "helloDolly8";
-    char* key9 = "helloDolly9";
-    char* val1 = "Value 1";
-    char* val2 = "Value 2";
-    char* val4 = "Value 4";
     char** value = new char*[1];
     void* val = (char*) value;
     void **vv = &val;
 
 
-    for(int i = 0; i < 50; i ++) {
+    for(int i = 0; i < 20; i ++) {
         char* val =test_data[rand()% test_data.size()];
-       db_put(database, val, 1, val1, 1);
+       db_put(database, val, 1, val, 1);
         inserted.push_back(val);
         db_get(database, inserted[rand()% inserted.size()], 1, vv, NULL);
         db_get(database, inserted[rand()% inserted.size()], 1, vv, NULL);
         db_get(database, inserted[rand()% inserted.size()], 1, vv, NULL);
 
     }
-    db_put(database, key1, 1, val1, 1);
+
     for (int j = 0; j < test_data.size(); ++j) {
-        delete test_data[j];
+        delete [] test_data[j];
     }
 
-  // database->dbworker->print();
+   database->dbworker->print();
 
-   // database->dbworker->print();
 
 
 
@@ -87,6 +74,7 @@ int main() {
     delete database->dbworker->tree;
     free(database->dbworker);
     free(database);
-
+    delete [] result;
+    delete [] value;
     return 0;
-}*/
+} */
