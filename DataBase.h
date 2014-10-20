@@ -1,17 +1,18 @@
 #include "mydb.h"
 #include <stdio.h>
+#include <iostream>
 
 using namespace std;
 
 struct BTree;
 struct NodeFileWrapper;
-NodeFileWrapper* node;
 
 struct FileWorker {
     static DataBase* db;
     static long get_free_chunk_pos();
     static NodeFileWrapper * read_chunk(long offset);
     static void write_chunk(NodeFileWrapper* node);
+
 };
 
 DataBase* FileWorker::db = NULL;
@@ -33,20 +34,19 @@ public:
     MetaData* md;
     long begin;
     long end;
-
+    long root_offset;
     void create(char* filename, struct DBC config);
     int insert(char* key, char* value);
     int get(char* key, char **value);
     void print();
     void print_file() {
         bool byte;
-
-        fseek(db_file, 0, SEEK_SET);
-
+        fseek(db_file, begin, SEEK_SET);
+        while(fread(&byte, sizeof(bool), 1, db_file)) {
+            cout << byte << " ";
+        }
     }
 };
-
-
 
 
 

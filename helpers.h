@@ -36,6 +36,13 @@
         array[index] = value_to_insert;
     };
 
+    void array_insert_string(char** array, int index, int array_size, char* value_to_insert) {
+        for (int i = array_size-1; i > index ; --i) {
+            strcpy(array[i], array[i-1]);
+        }
+        strcpy(array[index],value_to_insert);
+    };
+
     void array_insert_at_bytes(char* chunk, long offset, long chunk_size, char* bytes_to_insert, int num_of_bytes) {
         for (int i = chunk_size; i > offset; ++i) {
             chunk[i] = chunk[i-1];
@@ -73,3 +80,20 @@
         }
         return new_array;
     };
+
+    char** array_slice_string(char** array, char** to_array, int from_index, int to_index) {
+        int j = 0;
+        int size = to_index - from_index;
+        char** tmp = new char*[size];
+        for (int k = 0; k < size; ++k) {
+            tmp[k] = new char[20];
+        }
+        j = 0;
+        for (int i = from_index; i < to_index ; ++i) {
+            strcpy(tmp[j], array[i]);
+            strcpy(to_array[j], tmp[j]);
+            delete [] tmp[j];
+            j++;
+        }
+        delete []tmp;
+    }
