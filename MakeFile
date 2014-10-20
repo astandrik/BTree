@@ -1,2 +1,5 @@
 all:
-g++ main.cpp BTree.h helpers.h -o treetest
+g++ -c -fPIC main.cpp -o main.o
+g++ -shared -Wl,-soname,libdb.so -o libdb.so main.o
+
+
