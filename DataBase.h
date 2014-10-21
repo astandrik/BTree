@@ -64,8 +64,10 @@ struct DB *dbcreate(char *file, struct DBC conf) {
 } ;
 
 int db_close(struct DB *db) {
+    fclose(FileWorker::db->db_file);
     return 0;
 }
+
 int db_del(struct DB *db, void *key, size_t key_len) {
     char* k = (char*) key;
     db->dbworker->del(k);
