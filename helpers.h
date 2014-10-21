@@ -3,6 +3,14 @@
     using namespace std;
 
     template<class T>
+    bool vector_contains(vector<T>&v, T val) {
+        for (int i = 0; i < v.size(); ++i) {
+            if(v[i] == val) return true;
+        }
+        return false;
+    };
+
+    template<class T>
     void vector_remove_at(vector<T>& v, int index) {
         for (int i = index; i < v.size() - 1; ++i) {
             v[i] = v[i+1];
@@ -61,6 +69,12 @@
             array[i] = array[i+1];
         }
     };
+
+    void array_remove_at_string(char** array, int index, int array_size, int len) {
+        for (int i = index; i < array_size-1; ++i) {
+            strncpy(array[i], array[i+1], len);
+        }
+    }
 
     template<class T>
     T* array_slice(T* array, int from_index, int to_index, int array_size) {

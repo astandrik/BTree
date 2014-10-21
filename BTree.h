@@ -29,8 +29,13 @@ struct NodeFileWrapper {
     }
 
     NodeFileWrapper* get_child(int index) {
-        NodeFileWrapper* to_return = FileWorker::read_chunk(children[index]);
-        return to_return;
+        if(index >= 0 && index <= size) {
+            NodeFileWrapper *to_return = FileWorker::read_chunk(children[index]);
+            return to_return;
+        } else {
+            return NULL;
+        }
+
     }
 
     void free()
@@ -67,12 +72,43 @@ struct NodeFileWrapper {
         }
     }
 
+
+
+
+    char* get_biggest() {
+        while(!leaf) {
+            NodeFileWrapper* child = get_child(size);
+            strncpy(result, child->get_biggest(), FileWorker::db->md->key_size);
+            child->free();
+            return result;
+        }
+        return keys[size-1];
+    }
+
+    char* get_smallest() {
+        while(!leaf) {
+            NodeFileWrapper* child = get_child(0);
+            strncpy(result, child->get_smallest(), FileWorker::db->md->key_size);
+            child->free();
+            return result;
+        }
+        return keys[0];
+    }
+
+    void del(char* key);
+
+
+
+
+
     void insert(char *key, char* value) {
         int i = 0;
         for (; i < size && strncmp(key, keys[i], FileWorker::db->md->key_size) > 0; ++i) { }
 
         if (leaf) {
-            insert_key(i, key, value);
+            if(i == size || strncmp(keys[i], key, FileWorker::db->md->key_size) != 0) {
+                insert_key(i, key, value);
+            }
         } else {
             NodeFileWrapper* child_to_insert = get_child(i);
             if(child_to_insert->size == 2* factor_t - 1) {
@@ -90,7 +126,7 @@ struct NodeFileWrapper {
 
     void print() {
         for (int j = 0; j < size; ++j) {
-            cout << "Key :(" <<j << ") " << keys[j]  << "||";
+            cout << "Key :(" <<j << ") " << keys[j] << "||";
         }
         cout << endl;
         if(!leaf) {
@@ -281,14 +317,17 @@ struct BTree {
         root = FileWorker::read_chunk(db->root_offset);
         return root->get(key);
     }
-/*    void del(int key) {
+
+    void del(char* key) {
+        root = FileWorker::read_chunk(db->root_offset);
         root->del(key);
         if(root->size == 0) {
-            root = root->children[0];
-            height--;
+            NodeFileWrapper* child = root->get_child(0);
+            db->root_offset = child->offset;
+            child->free();
         }
-    }*/
-
+        root->free();
+    }
 
     void insert(char* key, char* value) {
         //Если корневого узла не было, создаем
@@ -328,7 +367,9 @@ struct BTree {
 
             if (root->leaf) {
                 cout << "Root is leaf, insert here" << endl;
-                root->insert_key(i, key, value);
+                if(i == root->size || strncmp(root->keys[i], key, db->md->key_size) != 0) {
+                    root->insert_key(i, key, value);
+                }
                 root->free();
             }
             else {
@@ -365,6 +406,15 @@ int DataBase::insert(char* key, char* value) {
     return 0;
 }
 
+int DataBase::del(char *key) {
+   // cout << "In Delete function" << endl;
+    try {
+        tree->del(key);
+    } catch(...) {
+        return -1;
+    }
+}
+
 int DataBase::get(char *key, char **value) {
     cout << "In Get function" << endl;
     try {
@@ -382,7 +432,7 @@ void DataBase::create(char* filename, struct DBC config) {
     FileWorker::db = this;
     md = new MetaData();
     md->chunk_size = 500;
-    md->t = 5;
+    md->t = 3;
     md->db_size = 50000000;
     md->key_size = 20;
     md->value_size = 20;
@@ -399,3 +449,189 @@ void DataBase::create(char* filename, struct DBC config) {
     fflush(db_file);
 }
 
+void NodeFileWrapper::del(char *key)  {
+    int i = 0;
+
+    for (; i < size && strncmp(key, keys[i], FileWorker::db->md->key_size) > 0; ++i) {}
+   // FileWorker::db->tree->root->print();
+    char* compared_key = i == size ? keys[i-1] : keys[i];
+    if(!leaf) {
+        NodeFileWrapper *current_child = get_child(i);
+        NodeFileWrapper *right_child = get_child(i+1);
+        NodeFileWrapper *left_child = get_child(i-1);
+        int left_ch_size = (!leaf && i > 0) ? left_child->size : -1;
+        int right_ch_size = !leaf && (i < size) ? right_child->size : -1;
+        int curr_ch_size = !leaf ? current_child->size : 0 ;
+
+        if (strncmp(key, compared_key, FileWorker::db->md->key_size) == 0) {
+            if(curr_ch_size>= factor_t) {
+                char* biggest_key = current_child->get_biggest();
+                char* biggest_value = get(biggest_key);
+                array_remove_at_string(keys, i, size,FileWorker::db->md->key_size);
+                array_remove_at_string(values, i, size,FileWorker::db->md->value_size);
+                array_insert_string(keys, i, size, biggest_key, FileWorker::db->md->key_size);
+                array_insert_string(values, i, size, biggest_value, FileWorker::db->md->key_size);
+                FileWorker::write_chunk(this);
+                current_child->del(biggest_key);
+                return;
+            } else if (right_ch_size >= factor_t) {
+                char* smallest_key = right_child->get_smallest();
+                char* smallest_value = get(smallest_key);
+                array_remove_at_string(keys, i, size,FileWorker::db->md->key_size);
+                array_remove_at_string(values, i, size, FileWorker::db->md->value_size);
+                array_insert_string(keys, i, size, smallest_key, FileWorker::db->md->key_size);
+                array_insert_string(values, i, size, smallest_value, FileWorker::db->md->key_size);
+                FileWorker::write_chunk(this);
+                right_child->del(smallest_key);
+                return;
+            } else if (curr_ch_size == right_ch_size && right_ch_size == factor_t - 1) {
+                array_insert_string(current_child->keys, current_child->size, current_child->size, compared_key, FileWorker::db->md->key_size);
+                array_insert_string(current_child->values, current_child->size, current_child->size, get(compared_key), FileWorker::db->md->key_size);
+                current_child->size++;
+                int j = 0;
+                for (; j < right_child->size; ++j) {
+                    array_insert_string(current_child->keys, current_child->size, current_child->size, right_child->keys[j], FileWorker::db->md->key_size);
+                    array_insert_string(current_child->values, current_child->size, current_child->size, right_child->values[j], FileWorker::db->md->value_size);
+                    array_insert_at(current_child->children, current_child->size, current_child->size + 1, right_child->children[j]);
+                    current_child->size++;
+                }
+                if(!right_child->leaf) {
+                    NodeFileWrapper *child = right_child->get_child(j);
+                    array_insert_at(current_child->children, current_child->size, current_child->size, child->offset);
+                    child->free();
+                }
+                FileWorker::write_chunk(current_child);
+                array_remove_at_string(keys, i, size, FileWorker::db->md->key_size);
+                array_remove_at_string(values, i, size, FileWorker::db->md->value_size);
+                array_remove_at(children, i+1, size + 1);
+                size--;
+                FileWorker::write_chunk(this);
+                current_child->del(key);
+                return;
+            }
+        }
+        if(strncmp(key, compared_key, FileWorker::db->md->key_size) != 0) {
+            if(current_child->size == factor_t - 1) {
+                if (left_ch_size > factor_t - 1) {
+
+                    NodeFileWrapper *child_to_insert;
+                    if(!left_child->leaf) {
+                        child_to_insert = left_child->get_child(left_child->size);
+                    }
+                    //Вставка в текущего ребенка
+                    array_insert_string(current_child->keys, 0, 2*factor_t - 1, keys[i-1], FileWorker::db->md->key_size);
+                    array_insert_string(current_child->values, 0, 2*factor_t - 1, values[i-1], FileWorker::db->md->key_size);
+                    if(!left_child->leaf) {
+                        array_insert_at(current_child->children, 0, 2 * factor_t, child_to_insert->offset);
+                    }
+                    current_child->size++;
+                    //Удаление\вставка из узла
+                    array_remove_at_string(keys, i-1, size,FileWorker::db->md->key_size);
+                    array_remove_at_string(values, i-1, size,FileWorker::db->md->value_size);
+                    array_insert_string(keys, i-1, size, left_child->keys[left_child->size-1], FileWorker::db->md->key_size);
+                    array_insert_string(values, i-1, size, left_child->values[left_child->size-1], FileWorker::db->md->key_size);
+                    //Удаление из левого ребенка
+                    array_remove_at_string(left_child->keys, left_child->size - 1, left_child->size, FileWorker::db->md->key_size);
+                    array_remove_at_string(left_child->values, left_child->size - 1, left_child->size, FileWorker::db->md->key_size);
+                    array_remove_at(left_child->children, left_child->size, left_child->size);
+                    left_child->size--;
+                    FileWorker::write_chunk(left_child);
+                    FileWorker::write_chunk(current_child);
+                    FileWorker::write_chunk(this);
+                    del(key);
+                    return;
+                } else if (right_ch_size > factor_t - 1) {
+                    NodeFileWrapper *child_to_insert;
+                    if(!right_child->leaf) {
+                        child_to_insert = right_child->get_child(0);
+                    }
+                    //Вставка в текущего ребенка
+                    array_insert_string(current_child->keys, current_child->size, 2*factor_t - 1, compared_key, FileWorker::db->md->key_size);
+                    array_insert_string(current_child->values, current_child->size, 2*factor_t - 1, values[i], FileWorker::db->md->value_size);
+
+                    if(!right_child->leaf) {
+                        array_insert_at(current_child->children, current_child->size + 1, 2 * factor_t, child_to_insert->offset);
+                        child_to_insert->free();
+                    }
+                    current_child->size++;
+                    //Удаление\вставка из узла
+                    array_remove_at_string(keys, i, size, FileWorker::db->md->key_size);
+                    array_remove_at_string(values, i, size, FileWorker::db->md->value_size);
+                    array_insert_string(keys, i, size, right_child->keys[0], FileWorker::db->md->key_size);
+                    array_insert_string(values, i, size, right_child->values[0], FileWorker::db->md->value_size);
+                    //Удаление из правого ребенка
+                    array_remove_at_string(right_child->keys, 0, right_child->size, FileWorker::db->md->key_size);
+                    array_remove_at_string(right_child->values, 0, right_child->size, FileWorker::db->md->value_size);
+                    array_remove_at(right_child->children, 0, right_child->size);
+                    right_child->size--;
+                    FileWorker::write_chunk(right_child);
+                    FileWorker::write_chunk(current_child);
+                    FileWorker::write_chunk(this);
+                    del(key);
+                    return;
+                } else if (left_ch_size == current_child->size && current_child->size == (factor_t - 1)) {
+                    NodeFileWrapper *child_to_insert;
+                    array_insert_string(current_child->keys, 0, 2*factor_t - 1, keys[i-1], FileWorker::db->md->key_size);
+                    array_insert_string(current_child->values, 0, 2*factor_t - 1, values[i-1], FileWorker::db->md->value_size);
+                    current_child->size++;
+                    array_remove_at_string(keys, i-1, size, FileWorker::db->md->key_size);
+                    array_remove_at_string(values, i-1, size, FileWorker::db->md->value_size);
+                    array_remove_at(children, i-1, size+1);
+                    size--;
+                    for (int j = 0; j < left_child->size ; ++j) {
+                        array_insert_string(current_child->keys, j, 2*factor_t - 1, left_child->keys[j], FileWorker::db->md->key_size);
+                        array_insert_string(current_child->values, j, 2*factor_t - 1, left_child->values[j], FileWorker::db->md->value_size);
+                        if(!left_child->leaf) {
+                            child_to_insert = left_child->get_child(j);
+                            array_insert_at(current_child->children, j, 2 * factor_t, child_to_insert->offset);
+                            child_to_insert->free();
+                        }
+                        current_child->size++;
+                    }
+                    if(!left_child->leaf) {
+                        child_to_insert = left_child->get_child(left_child->size);
+                        array_insert_at(current_child->children, left_child->size, 2 * factor_t, child_to_insert->offset);
+                        child_to_insert->free();
+                    }
+                    FileWorker::write_chunk(current_child);
+                    FileWorker::write_chunk(this);
+                } else if (right_ch_size == current_child->size && current_child->size == (factor_t - 1)) {
+                    NodeFileWrapper *child_to_insert;
+                    array_insert_string(current_child->keys, current_child->size, 2*factor_t - 1, compared_key, FileWorker::db->md->key_size);
+                    array_insert_string(current_child->values, current_child->size, 2*factor_t - 1, values[i], FileWorker::db->md->value_size);
+                    current_child->size++;
+                    array_remove_at_string(keys, i, size, FileWorker::db->md->key_size);
+                    array_remove_at_string(values, i, size, FileWorker::db->md->value_size);
+                    array_remove_at(children, i+1, size+1);
+                    size--;
+                    int index = current_child->size;
+                    for (int j = 0; j < right_child->size ; ++j) {
+                        array_insert_string(current_child->keys, index + j, 2*factor_t - 1, right_child->keys[j], FileWorker::db->md->key_size);
+                        array_insert_string(current_child->values, index + j, 2*factor_t - 1, right_child->values[j], FileWorker::db->md->value_size);
+                        if(!right_child->leaf) {
+                            child_to_insert = right_child->get_child(j);
+                            array_insert_at(current_child->children, index + j, 2 * factor_t, child_to_insert->offset);
+                            child_to_insert->free();
+                        }
+                        current_child->size++;
+                    }
+                    if(!right_child->leaf) {
+                        child_to_insert = right_child->get_child(right_child->size);
+                        array_insert_at(current_child->children, index + right_child->size, 2 * factor_t, child_to_insert->offset);
+                        child_to_insert->free();
+                    }
+                    FileWorker::write_chunk(current_child);
+                    FileWorker::write_chunk(this);
+                }
+            }
+        }
+        current_child->del(key);
+    }
+    if(leaf && strncmp(key,compared_key, FileWorker::db->md->key_size) == 0) {
+        array_remove_at_string(keys, i, size,FileWorker::db->md->key_size);
+        array_remove_at_string(values, i, size, FileWorker::db->md->value_size);
+        size--;
+        FileWorker::write_chunk(this);
+        return;
+    }
+}

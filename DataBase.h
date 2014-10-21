@@ -38,6 +38,7 @@ public:
     void create(char* filename, struct DBC config);
     int insert(char* key, char* value);
     int get(char* key, char **value);
+    int del(char* key);
     void print();
     void print_file() {
         bool byte;
@@ -66,6 +67,8 @@ int db_close(struct DB *db) {
     return 0;
 }
 int db_del(struct DB *db, void *key, size_t key_len) {
+    char* k = (char*) key;
+    db->dbworker->del(k);
     return 0;
 }
 int db_get(struct DB *db, void *key, size_t key_len,
