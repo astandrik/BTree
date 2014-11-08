@@ -53,7 +53,8 @@ struct NodeFileWrapper {
     char *get(char* key) {
         int i = 0;
         for (; i < size && strncmp(key, keys[i], FileWorker::db->md->key_size) > 0; ++i) {}
-        if(i != size && strncmp(key, keys[i], FileWorker::db->md->key_size) == 0)
+		
+	if(i != size && strncmp(key, keys[i], FileWorker::db->md->key_size) == 0)
         {
             return values[i];
         }
@@ -64,7 +65,6 @@ struct NodeFileWrapper {
             else {
 
                 NodeFileWrapper *child = get_child(i);
-                //har *result = new char[2000]
                 strncpy(result,  child->get(key), FileWorker::db->md->value_size);
                 child->free();
                 return result;
@@ -104,6 +104,13 @@ struct NodeFileWrapper {
     void insert(char *key, char* value) {
         int i = 0;
         for (; i < size && strncmp(key, keys[i], FileWorker::db->md->key_size) > 0; ++i) { }
+	
+	if(i != size && strcmp(key, keys[i]) == 0) {
+		strncpy(values[i], value, FileWorker::db->md->value_size);
+		FileWorker::write_chunk(this);
+		return;
+	}
+		
 
         if (leaf) {
             if(i == size || strncmp(keys[i], key, FileWorker::db->md->key_size) != 0) {
@@ -112,7 +119,6 @@ struct NodeFileWrapper {
         } else {
             NodeFileWrapper* child_to_insert = get_child(i);
             if(child_to_insert->size == 2* factor_t - 1) {
-//                cout << "Splitting child " << endl;
                 Split(i);
                 insert(key, value);
                 child_to_insert->free();
@@ -125,21 +131,21 @@ struct NodeFileWrapper {
     }
 
     void print() {
-   //     for (int j = 0; j < size; ++j) {
-  //          cout << "Key :(" <<j << ") " << keys[j] << "||";
-    //    }
+        for (int j = 0; j < size; ++j) {
+            cout << "Key :(" <<j << ") " << keys[j] << "||";
+        }
         cout << endl;
         if(!leaf) {
-      //      cout << "Children begin: " << endl;
+            cout << "Children begin: " << endl;
             for (int i = 0; i < size+1; ++i) {
                 NodeFileWrapper* child = get_child(i);
-//                cout << "Printing child " << i << endl;
+                cout << "Printing child " << i << endl;
                 if(child->offset != 0) {
                     child->print();
                 }
                 child->free();
             }
-        //    cout << "Children end." << endl;
+            cout << "Children end." << endl;
         }
     }
 
