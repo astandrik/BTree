@@ -1,6 +1,7 @@
 #include "mydb.h"
 #include <stdio.h>
 #include <iostream>
+#include <string>
 
 using namespace std;
 
@@ -77,8 +78,11 @@ int db_get(struct DB *db, void *key, size_t key_len,
         void **val, size_t *val_len) {
     char **v = (char **) val;
     char *k = (char *) key;
-    *val_len = 20;
-    return db->dbworker->get(k, v);
+    int len = 0;
+    db->dbworker->get(k, v);
+    while(v[0][len] != '\0') len++;
+    *val_len = len;
+    return 0;
 }
 int db_put(struct DB *db, void *key, size_t key_len,
         void *val, size_t val_len) {
@@ -88,3 +92,7 @@ int db_put(struct DB *db, void *key, size_t key_len,
     //db->dbworker->print();
     return  1;
 }
+
+
+
+

@@ -64,7 +64,7 @@ struct NodeFileWrapper {
             else {
 
                 NodeFileWrapper *child = get_child(i);
-                //har *result = new char[2000];
+                //har *result = new char[2000]
                 strncpy(result,  child->get(key), FileWorker::db->md->value_size);
                 child->free();
                 return result;
@@ -112,7 +112,7 @@ struct NodeFileWrapper {
         } else {
             NodeFileWrapper* child_to_insert = get_child(i);
             if(child_to_insert->size == 2* factor_t - 1) {
-                cout << "Splitting child " << endl;
+//                cout << "Splitting child " << endl;
                 Split(i);
                 insert(key, value);
                 child_to_insert->free();
@@ -125,21 +125,21 @@ struct NodeFileWrapper {
     }
 
     void print() {
-        for (int j = 0; j < size; ++j) {
-            cout << "Key :(" <<j << ") " << keys[j] << "||";
-        }
+   //     for (int j = 0; j < size; ++j) {
+  //          cout << "Key :(" <<j << ") " << keys[j] << "||";
+    //    }
         cout << endl;
         if(!leaf) {
-            cout << "Children begin: " << endl;
+      //      cout << "Children begin: " << endl;
             for (int i = 0; i < size+1; ++i) {
                 NodeFileWrapper* child = get_child(i);
-                cout << "Printing child " << i << endl;
+//                cout << "Printing child " << i << endl;
                 if(child->offset != 0) {
                     child->print();
                 }
                 child->free();
             }
-            cout << "Children end." << endl;
+        //    cout << "Children end." << endl;
         }
     }
 
@@ -217,7 +217,7 @@ NodeFileWrapper  *FileWorker::read_chunk(long _offset) {
     bzero(children, keyvalue_size + 1);
     for (int i = 0; i < keyvalue_size; ++i) {
         keys[i] = new char[db->md->key_size];
-        values[i] = new char[db->md->value_size];
+        values[i] = new char[db->md->value_size+1];
         bzero(keys[i], db->md->key_size);
         bzero(values[i], db->md->value_size);
     }
@@ -247,7 +247,7 @@ long  FileWorker::get_free_chunk_pos() {
         fread(&tmp, sizeof(long), 1, db->db_file);
         fread(&size, sizeof(int), 1, db->db_file);
         if(size == 0) {
-            cout << "Got new pos: " << init_pos << endl;
+//            cout << "Got new pos: " << init_pos << endl;
             return init_pos;
         }
         else {
@@ -344,7 +344,7 @@ struct BTree {
         root = FileWorker::read_chunk(db->root_offset);
         //Если корень переполнен, увеличиваем высоту дерева
         if (root->size == 2*factor_t - 1) {
-            cout << "Increasing tree height " << endl;
+          //  cout << "Increasing tree height " << endl;
             NodeFileWrapper *new_node = new NodeFileWrapper();
             height++;
             new_node->leaf = false;
@@ -362,28 +362,28 @@ struct BTree {
         }
         else {
             int i = 0;
-            cout << "Root size " << root->size << " is ok" << endl;
+            //cout << "Root size " << root->size << " is ok" << endl;
             for (; i < root->size && strncmp(key, root->keys[i], db->md->key_size) > 0; ++i) {}
 
             if (root->leaf) {
-                cout << "Root is leaf, insert here" << endl;
+             //   cout << "Root is leaf, insert here" << endl;
                 if(i == root->size || strncmp(root->keys[i], key, db->md->key_size) != 0) {
                     root->insert_key(i, key, value);
                 }
                 root->free();
             }
             else {
-                cout << "Root is not leaf, insert into child number: " << i<< endl;
+             //   cout << "Root is not leaf, insert into child number: " << i<< endl;
                 NodeFileWrapper* child_to_insert = root->get_child(i);
                 if(child_to_insert->size == 2* factor_t - 1) {
-                    cout << "Splitting root" << endl;
+                 //   cout << "Splitting root" << endl;
                     root->Split(i);
                     root->free();
                     insert(key, value);
                     child_to_insert->free();
                     return;;
                 }
-                cout << "Catching errors here nvm" << endl;
+               // cout << "Catching errors here nvm" << endl;
                 child_to_insert->insert(key, value);
                 child_to_insert->free();
                 root->free();
@@ -396,13 +396,13 @@ void DataBase::print() {
     tree->print();
 }
 int DataBase::insert(char* key, char* value) {
-    cout << "In Insert function" << endl;
+  //  cout << "In Insert function" << endl;
     try {
         tree->insert(key, value);
     } catch(...) {
         return -1;
     }
-    cout << "Quitting Insert function" << endl;
+   // cout << "Quitting Insert function" << endl;
     return 0;
 }
 
@@ -416,15 +416,15 @@ int DataBase::del(char *key) {
 }
 
 int DataBase::get(char *key, char **value) {
-    cout << "In Get function" << endl;
     try {
         char *val =(tree->get(key));
-        value[0] = val;
+	int i = 0;
+        *value = new char[20];	
+        strcpy(*value,val);
         tree->root->free();
     } catch(...) {
         return -1;
     }
-    cout << "Quitting Get function" << endl;
     return 0;
 }
 
