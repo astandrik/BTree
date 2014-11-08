@@ -105,7 +105,8 @@ struct NodeFileWrapper {
         int i = 0;
         for (; i < size && strncmp(key, keys[i], FileWorker::db->md->key_size) > 0; ++i) { }
 	
-	if(i != size && strcmp(key, keys[i]) == 0) {
+	if(i != size && strncmp(key, keys[i], FileWorker::db->md->key_size) == 0) {
+		cout << " Key: " << key << " oldvalue: " << values[i] << " newvalue: " << value << endl;
 		strncpy(values[i], value, FileWorker::db->md->value_size);
 		FileWorker::write_chunk(this);
 		return;
