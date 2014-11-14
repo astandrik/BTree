@@ -16,6 +16,26 @@ struct FileWorker {
 
 };
 
+struct CacheWorker {
+    char** keys;
+    char** values;
+    int cache_size;
+    bool search_for_value(char* key, char* new_val);
+    void push_front(char* key, char* value);
+    void pop_back(char *key);
+    void bump(int pos);
+    CacheWorker(int elem_num, int ksize, int vsize) {
+        cache_size = elem_num;
+        keys = new char*[elem_num];
+        values = new char*[elem_num];
+        for (int i = 0; i < elem_num; ++i) {
+            keys[i] = new char[ksize];
+            values[i] = new char[vsize];
+        }
+    }
+};
+
+
 DataBase* FileWorker::db = NULL;
 
 struct DataBase {
@@ -27,12 +47,14 @@ struct DataBase {
         int value_size;
         long db_size;
         long root_offset;
+        int mem_size;
     };
 
 public:
     FILE* db_file;
     BTree* tree;
     MetaData* md;
+    CacheWorker* cache;
     long begin;
     long end;
     long root_offset;
@@ -64,6 +86,7 @@ struct DB *dbcreate(char *file, struct DBC conf) {
     return database;
 } ;
 
+
 int db_close(struct DB *db) {
     fclose(FileWorker::db->db_file);
     return 0;
@@ -92,7 +115,6 @@ int db_put(struct DB *db, void *key, size_t key_len,
     //db->dbworker->print();
     return  1;
 }
-
 
 
 
